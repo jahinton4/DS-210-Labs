@@ -1,0 +1,228 @@
+---
+title: "Lab 06 - Professor attractiveness and course evaluations, Part 1"
+subtitle: "Modeling with a single predictor"
+author: "Jeannie Hinton"
+date: "4/4/2023"
+output: html_document
+---
+
+
+## Getting started
+
+Many college courses conclude by giving students the opportunity to evaluate the course and the instructor anonymously. However, the use of these student evaluations as an indicator of course quality and teaching effectiveness is often criticized because these measures may reflect the influence of non-teaching related characteristics, such as the physical appearance of the instructor. The article titled, "Beauty in the classroom: instructors’ pulchritude and putative pedagogical productivity" (Hamermesh and Parker, 2005) found that instructors who are viewed to be better looking receive higher instructional ratings. (Daniel S. Hamermesh, Amy Parker, Beauty in the classroom: instructors pulchritude and putative pedagogical productivity, Economics of Education Review, Volume 24, Issue 4, August 2005, Pages 369-376, ISSN 0272-7757, 10.1016/j.econedurev.2004.07.013. http://www.sciencedirect.com/science/article/pii/S0272775704001165.)
+
+For this assignment you will analyze the data from this study in order to learn what goes into a positive professor evaluation.
+
+The data were gathered from end of semester student evaluations for a large sample of professors from the University of Texas at Austin. In addition, six students rated the professors’ physical appearance. (This is a slightly modified version of the original data set that was released as part of the replication data for Data Analysis Using Regression and Multilevel/Hierarchical Models (Gelman and Hill, 2007).) The result is a data frame where each row contains a different course and columns represent variables about the courses and professors.
+
+### Packages
+
+In this lab we will work with the **tidyverse**, **openintro**, and **broom** packages.  You will first need to install the **openintro** package by running `install.packages("openintro")` in the console.
+
+```{r message = FALSE}
+library(tidyverse) 
+library(broom)
+library(openintro)
+library(qqplotr)
+```
+```{r data, echo = FALSE}
+view(evals)
+evals <- evals
+```
+
+## The data
+
+The dataset we'll be using is called `evals` from the **openintro** package. Take a peek at the codebook with `?evals`.
+
+## Exercises
+
+### Part 1: Exploratory Data Analysis
+
+1.  Visualize the distribution of `score`. Is the distribution skewed? What does 
+    that tell you about how students rate courses? Is this what you expected to 
+    see? Why, or why not? Include any summary statistics and visualizations
+    you use in your response.
+      The distribution is right skewed with many of the scores ranging from 4 to 4.9. This reveals that many students rank their classes as very good to almost excellent. I expected that the distribution would be a bit more symmetric with the mode being more so between 3.5 and 4.5. I thought that students would view their classes more negatively than positively as they revealed in this survey. However, the summary statistics also say otherwise with the median score being a 4.3. I expected the median score to be between 3.5 and 4, but not as high as the data suggests. Also, the minimum score is higher than expected. I had thought that there would be a class with a score of 1 just because a student hated it so much, thus I am surprised in many ways by this score variable. 
+```{r histogram of score}
+ggplot(evals, aes(x = score)) +
+  geom_histogram(color = "white", fill = "cadetblue") 
+```
+```{r sum stats for score}
+evals %>% 
+  summarise(min(score), max(score), median(score))
+```
+
+2.  Visualize and describe the relationship between `score` and the variable `bty_avg`.
+      It is difficult to see the relationship between score and bty_avg. However, it looks like there is a slight increase in score the higher the beauty average is along the bottom of the scatterplot. For the majority of the points, it is interesting to see how patterned the points are. 
+    
+```{r score v bty_avg}
+ggplot(evals, aes(x = bty_avg, y = score)) +
+  geom_point()
+```
+
+3.  Replot the scatterplot from Exercise 2, but this time use `geom_jitter()`. 
+    What was misleading about the initial scatterplot?
+      The initial scatterplot only hinted at a slight positive, increasing relationship, but by adding the jitter function, I can now see more clustered sections in the scatterplot. 
+```{r jittered score v bty_avg}
+ggplot(evals, aes(x = bty_avg, y = score)) +
+  geom_jitter() +
+  geom_point()
+```
+
+    **Hint:** See the help page for the jitter function at http://ggplot2.tidyverse.org/reference/index.html.
+
+### Part 2: Linear regression with a numerical predictor
+
+4.  Let's see if the apparent trend in the plot is something more than
+    natural variation. Fit a linear model called `m_bty` to predict average
+    professor evaluation `score` by average beauty rating (`bty_avg`). Based on the 
+    regression output, write the linear model.
+  score = 2.2237 + 0.5256(bty_avg)
+```{r linear reg intercept & slope}
+m_bty <- lm(score ~ bty_avg, data = evals)
+```
+  
+    
+```{r linear reg}
+tidy(m_bty)
+```
+$\hat{score} = 3.880 + 0.0666(btyavg)$
+    
+5.  Replot your visualization from Exercise 3, and add the regression line to this plot
+    in orange color. Turn off the shading for the uncertainty of the line.  Hint:  use `se = FALSE` and  `col = "orange"` in your `geom_smooth()` function call.
+    
+```{r linear reg w orange line} 
+ggplot(evals, aes(x = bty_avg, y = score)) +
+  geom_point() + 
+  geom_jitter() +
+  geom_smooth(method = "lm", se = FALSE, col = "orange")
+```
+6.  Interpret the slope of the linear model in context of the data.
+      For each unit of increase in a professor's average beauty score, we expect to see about a 0.0666 increase in overall score of the course. 
+      
+7.  Interpret the intercept of the linear model in context of the data. Comment on whether or not the intercept makes sense in this context.
+  When a professor's beauty average is 0, we expect the overall course to have a score of 3.880. It does makes sense because this intercept value is somewhat close to the minimum value of score in our dataset, which is about 2.3. 
+  
+8.  Determine the $R^2$ of the model and interpret it in context of the data.
+  The $R^2$ of the model is 0.03502. This means that about 3.502% of the variation in score for a class can be explained by the linear relationship with the average beauty rating of a professor. Therefore, about 96% of the variation in the score for a class is determined by other variables.
+```{r r squared for model}
+summary(m_bty)
+```
+
+
+9.  Create a residual plot for your model and discuss what the plot tells you.  Use the `augment()` function to add `.fitted` and `.resid` columns to your model output `m_bty`.  Then use `ggplot()` to create a scatterplot of the fitted values versus the residuals.  Use `geom_hline(yintercept = 0, color = "blue", lty = 2)` to add a horizontal reference line at `y=0`.
+
+```{r augment}
+m_bty_aug <- augment(m_bty)
+```
+
+```{r residual plot}
+ggplot(data = m_bty_aug, aes(x = .fitted, y = .resid)) +
+    geom_point() +
+    geom_hline(yintercept = 0, color = "blue", lty = 2)
+```
+The residual plot has no clear pattern, therefore this linear model is usable for inference. There are no regression model assumption violated when there is a random pattern such as in this plot. 
+
+10.  Inspect the distribution of the residuals by first constructing a histogram and then constructing a normal probability plot.  What can you conclude from these plots?
+
+The data are almost close to unimodal and symmetric. With different binwidths, though, the data started to look right skewed. Thus, I checked the model assumptions with a normal probability plot. The normal probability plot is good until the upper tail where it skews, so I checked the Shapiro Wilk test p-value. The p-value is less than 0.05, so the normal assumption is accepted. 
+
+```{r histogram of residual}
+ggplot(data = evals, aes(x= bty_avg)) +
+  geom_histogram(fill = "cadetblue", color = "white", binwidth = .5)
+```
+```{r normal prob plot}
+ggplot(m_bty_aug, aes(sample = .resid)) +
+  stat_qq_point(size = 2, color = "red") +
+  stat_qq_line(color = "green") +
+  xlab("Theoretical Quantiles") + ylab("Sample Quantiles")
+```
+
+```{r shapiro wilk test}
+shapiro.test(m_bty_aug$.resid)
+```
+
+
+11.  Use `tidy(m_bty)` to examine the output for your model `m_bty`.  What does the p-value for the slope tell us?  Use the `confint` function to get a 95% confidence interval for the true slope $\beta_1$.  Does your confidence interval confirm what you found for the p-value?  Explain.
+
+```{r tidy output}
+tidy(m_bty)
+confint(m_bty)
+```
+
+The p-value for the slope is 5.082731e-05 which is really close to 0 meaning that there is an association between average beauty score and course score. The null hypothesis for slope is that the slope is equal to zero meaning that there is not an association between the two variables. However, the confidence interval for the slope of this model reveals that we are 95% confident that the true slope for this model is between 0.0346 and 0.0987. This interval does not contain zero, and thus, the null hypothesis is rejected in favor of there being an association between the two variables. 
+
+### Part 3: Linear regression with a categorical predictor
+
+12.  Visualize and describe the relationship between the average professor evaluation `score` and `gender`. What can you conclude from your visualization? Does there appear to be an association between these two variables?
+
+```{r score and gender scatter}
+ggplot(evals, aes(x = gender, y = score)) +
+  #geom_jitter() +
+  geom_boxplot()
+```
+The boxplots for the two variables are different from each other, suggesting there is an association between gender and score. 
+
+
+13. Fit a new linear model called `m_gen` to predict average professor evaluation `score` 
+    based on `gender` of the professor. Using the regression output, write the linear 
+    model and interpret the slope and intercept in context of the data.  Use the `tidy()` function to view the model parameter estimates.
+    
+$\hat{score} = 4.093 + 0.141(gender)$
+
+Slope: For every add
+    
+```{r new linear model}
+m_gen <- lm(score ~ gender, data = evals)
+```
+
+```{r regression output for new lin mod}
+m_gen_aug <- augment(m_gen)
+tidy(m_gen)
+summary(m_gen)
+```
+
+
+14. Create a residual plot for your model and discuss what the plot tells you.
+
+```{r resdiual plot}
+ggplot(data = m_gen_aug, mapping = aes(x = gender, y = .resid)) +
+  geom_point(alpha = 0.5) +
+  geom_jitter() +
+  geom_hline(yintercept = 0, color = "blue", lty = 2) +
+  labs(x = "Gender", y = "Residuals")
+```
+This residual plot almost has a strange pattern with how there appear to be two rectangles but I think this is mainly because of the categorical nature of the variable, Gender. 
+
+15.  Use `tidy(m_gen)` to examine the output for your model again.  What does the p-value for the slope tell us?  Use the `confint` function to get a 95% confidence interval for the true slope $\beta_1$.  Does your confidence interval confirm what you found for the p-value?  Explain.
+    The P-value for the slope is less than 0.05 which means that there is an association between gender and score. However, I wonder how strong this association really is. The confidence interval for this model reveals that we are 95% confident that the true slope for this model is between 0.042 and 0.241. Since both of these values are positive, we can conclude that for male professors, the predicted score for their courses will be at least 0.041 units higher than a female professors courses. 
+```{r tidy gender model and CI}
+tidy(m_gen)
+confint(m_gen)
+```
+    
+    
+16. Create a new variable based on the `rank` variable called `tenure_eligible` that labels `"teaching"` faculty as 
+    `"no"` and labels `"tenure track"` and `"tenured"` faculty as `"yes"`.
+    
+```{r new tenure variable}
+evals_tenure <- evals %>% 
+  mutate(tenure_eligible = case_when(rank == "teaching" ~ "no", 
+                                     rank == "tenured" ~ "yes"))
+```
+
+  
+17. Fit a new linear model called `m_tenure_eligible` to predict average professor evaluation 
+    `score` based on `tenure_eligible`ness of the professor. This is the new (regrouped) variable 
+    you created in Exercise 16. Based on the regression output, write the linear 
+    model and interpret the slopes and intercept in context of the data. Also determine and 
+    interpret the $R^2$ of the model.
+```{r tenure model}
+m_tenure_eligible <- lm(score ~ tenure_eligible, data = evals_tenure)
+tidy(m_tenure_eligible)
+summary(m_tenure_eligible)
+```
+
+$\hat{score} = 4.284 - 0.145(tenureEligible)$
+
+When a professor is tenured, their predicted score will be 4.139. When a professor is not tenured, their predicted score will be 4.284. The r-squared value for this model is 0.0149. This r-squared value suggests that only 1.49% of the variation in predicted score for a course is caused by the linear relationship between score and tenure eligibility. 

@@ -1,0 +1,301 @@
+title: "Lab 04 - La Quinta is Spanish for *next to Denny's*, Part. 1"
+author:  "CoolKids"
+date:  "2/16/2023"
+output: 
+  html_document: 
+    theme: journal
+---
+
+This lab is adapted from a project assigned by Colin Rundel and Mine Cetckaya-Rundel to their students at Duke University.  They subsequently wrote an aritcle for [Chance](https://chance.amstat.org/2016/04/la-quinta/) magazine about the project.
+
+Have you ever taken a road trip in the US and thought to yourself "I wonder what La Quinta means". Well, the late comedian [Mitch Hedberg](https://en.wikipedia.org/wiki/Mitch_Hedberg) thinks it's Spanish for *next to Denny's*.
+
+If you're not familiar with these two establishments, [Denny's](https://www.dennys.com/) is a casual diner chain that is open 24 hours and [La Quinta Inn and Suites](http://www.lq.com/) is a hotel chain.
+
+These two establishments tend to be clustered together, or at least this observation is a joke made famous by Mitch Hedberg. In this lab we explore the validity of this joke and along the way learn some more data wrangling and tips for visualizing spatial data.
+
+The inspiration for this lab originally comes from a blog post by John Reiser on his *new jersey geographer* blog. You can read that analysis [here](http://njgeo.org/2014/01/30/mitch-hedberg-and-gis/). Reiser's blog post focuses on scraping data from Denny's and La Quinta Inn and Suites websites using Python. In this lab we focus on visualization and analysis of these data. However note that the data scraping was also done in R, but for now we will focus on the data that has already been scraped and tidied for you.
+
+# Lap Prep:  Merges and Merge Conflicts
+
+Be sure to read this section before you complete this lab! You will be working on a team to complete this assignment, which means you will be sharing a single repository for your files.  This may ultimately lead to merge conflicts, so in this section you will find information about resolving merge conflicts that you can refer back to as needed.
+
+* Pushing to a repo replaces the code on GitHub with the code you have on your computer.
+
+* If a collaborator has made a change to your repo on GitHub that you have not incorporated into your local work, GitHub will stop you from pushing to the repo because this could overwrite your collaborator's work!
+
+* So you need to explicitly "merge" your collaborator's work with the work you did on your local machine before you can push.
+
+* If you and your collaborator's changes are in different files or in different parts of the same file, git merges the work for you automatically when you "pull".
+
+* If you both changed the same part of a file, git will produce a **merge conflict** because it does not know which change you want to keep and which change you want to overwrite.
+
+Git will put conflict markers in your code that look like the following:
+
+
+    <<<<<<< HEAD 
+
+    See also: [dplyr documentation](https://dplyr.tidyverse.org/)   
+
+    ======= 
+
+    See also [ggplot2 documentation](https://ggplot2.tidyverse.org/)  
+
+    >>>>>>> some1alpha2numeric3string4
+    
+    
+The `===`s separate *your* changes (top) from *their* changes (bottom).
+
+Note that on top you see the word `HEAD`, which indicates that these are your changes.
+
+And at the bottom you see `some1alpha2numeric3string4` (it actually probably looks more like `28e7b2ceb39972085a0860892062810fb812a08f`).
+
+This is the **hash** (a unique identifier) of the commit your collaborator made with the conflicting change.
+
+Your job is to *reconcile* the changes: edit the file so that it incorporates the best of both versions and delete the `<<<`, `===`, and `>>>` lines.
+Then you can stage and commit the result.
+
+
+# Packages
+
+In this lab we will use the `tidyverse` package.  Be sure to change `eval = FALSE` to `eval = TRUE` in the code chunk below before knitting your document.
+
+```{r message = FALSE}
+library(tidyverse) 
+```
+# Warm up
+
+Before we introduce the data, let's warm up with some simple exercises.
+
+**Pick one team member to complete the step below while the others contribute to the discussion but do not actually touch the files on their computer.**
+
+- Open the R Markdown (Rmd) file in your project and add an author name (your **team** name), and knit the document.
+- Go to the **Git** pane in your RStudio. 
+- View the **Diff** and confirm that you are happy with the changes.
+- Add a commit message like "Update team name" in the **Commit message** box and hit **Commit**.
+- Click on **Push**. 
+
+## Pulling changes:
+
+Now, the remaining team members who have not been concurrently making these changes on their projects should click on the **Pull** button in their Git pane and observe that the changes are now reflected in their projects as well.
+
+## Resolving Merge Conflicts:
+**Take turns in completing the exercise, only one member at a time.**
+
+- Member 1 - Change the team name to something else, then knit, commit, push.
+- Member 2 - Change the team name to some other word, knit, commit, push. *You should get an error*. Pull. Take a look at the document with the merge conflict. Clear the merge conflict by choosing the correct/preferred change. Knit.  Click the **Staged Checkbox** for the .Rmd and .html files in your Git pane.  Commit, and push.
+- Member 1 - Add a label to the first code chunk. Knit, commit, push. You should get an error. Pull. No merge conflicts should occur, but you should see a message about merging. Now push.
+- Member 2 - Add a different label to the first code chunk.  Knit, commit, push. You should get an error. Pull. Take a look at the document with the merge conflict. Clear the merge conflict by choosing the correct/preferred change. Commit, and push.
+- Member 1 - Add yet another different label to the first code chunk.  Knit, commit, push.  You should get an error.  Pull.  Take a look at the document with the merge conflict.  Clear the merge conflicts by choosing the correct/preferred change.  Knit.  Click the **Staged Checkbox** for the altered files.  Commit, and push.
+- All members - Pull, and observe the changes in your document.
+
+## Tips for collaborating via GitHub:
+
+- Always pull first before you start working.
+- Resolve a merge conflict (commit and push) *before* continuing your work.  Never do new work while resolving a merge conflict.
+- Commit and push often to minimize merge conflicts and/or to make merge conflicts easier to resolve.
+
+
+# The data
+
+In this lab we will read the data in from 
+a comma separated values (CSV) file. 
+
+
+The data consist of two csv files: one for Denny's locations and the other for La Quinta.  Be sure to remove the `eval = FALSE` option before running the code chunks to load the data.
+
+
+```{r}
+dn <- read_csv("data/dennys.csv")
+lq <- read_csv("data/laquinta.csv")
+```
+
+Note that these data were scraped from [here](https://locations.dennys.com/) and [here](https://www.lq.com/en/findandbook/hotel-listings.html), respectively.
+
+To help with our analysis we will also use a data set on US states (don't forget to remove the `eval = FALSE` option so the data will be loaded when you knit):
+
+```{r}
+states <- read_csv("data/states.csv")
+```
+
+Each observation in this data set represents a state, including Washington D.C. Along with the name of the state we have the two-letter abbreviation and we have the geographic area of the state (in square miles).
+
+You should complete the following exercises as a team.  One person should commit/push each exercise answer, and then the other team members should pull to get the updated change.  Rotate which team member commits and pushes.  Note that `eval = FALSE` is used in the code chunks for some of the exercises.  Be sure to remove this option once you have completed the corresponding exercise.  
+
+# Exercises
+
+1. What are the dimensions of the Denny's dataset? (Hint: Use inline R code 
+   and functions like `nrow` and `ncol` to compose your answer.) What does 
+   each row in the dataset represent? What are the variables? 
+
+```{r denny}
+glimpse(dn)
+```
+
+There are `r nrow(dn)` observations and `r ncol(dn)` variables in the Denny's datset. Each row is a specific Denny's location. The variables represent the geographical identifiers of a specfic Denny's. 
+
+2. What are the dimensions of the La Quinta's dataset? What does each row 
+   in the dataset represent? What are the variables?
+   
+```{r la-qu}
+glimpse(lq)
+```
+
+There are `r nrow(lq)` observations and `r ncol(lq)` variables in the La-Quinta's dataset. Each 
+row represents a specific La Quinta's location. The variables represent the geographical identifiers of a specfic La Quinta's.
+
+We would like to limit our analysis to Denny's and La Quinta locations in the United States. 
+We will determine whether or not the establishment has a location outside the US using the `state` variable in the `dn` and `lq` datasets. We know exactly which states are in the US, and we have this information in the `states` data frame we loaded.
+
+3. Find the Denny's locations that are outside the US, if any. To do so, filter the Denny's locations for observations where `state` is not in the column `abbreviation` in the `states` dataframe.  Recall that we can reference a particular vector (or column) from a dataframe using `$`, like this:  `states$abbreviation`. Write code to filter the Denny's locations using the condition `!(state %in% states$abbreviation)`.  Are there any Denny's locations outside the US?
+
+```{r international-dennys}
+dn %>% 
+  filter (!(state %in% states$abbreviation))
+```
+
+No, there aren't any Denny's locations outside the US. 
+
+4. Add a `country` variable to the Denny's dataset and set all observations equal to `"United States"`. Remember, you can use the `mutate` function for adding a variable. Make sure to save the result of this as `dn` again so that the stored data frame contains the new variable going forward.
+
+Note:  We don't need to tell R how many times to repeat the character string "United States" to fill in the data for all observations, R takes care of that automatically.
+
+```{r country-dn}
+dn <- dn %>% 
+  mutate(country = "United States")
+```
+
+```{r}
+glimpse(dn)
+```
+
+
+5. Find the La Quinta locations that are outside the US, and figure out which country they are in. This might require some googling. Take notes, you will need to use this information in the next exercise.
+
+```{r international-laquinta}
+lq %>% 
+  filter (!(state %in% states$abbreviation))
+```
+
+The locations are as follows: 
+AG, CH, QR, NL, SL, PU, VE is Mexico 
+FM is Honduras
+ANT is Columbia
+ONT, BC are Canada
+
+6. Add a country variable to the La Quinta dataset. Use the `case_when` function to populate this variable. You'll need to refer to your notes from Exercise 6 about which country the non-US locations are in. Here is some starter code to get you going:
+```{r eval=TRUE}
+lq <- lq %>%
+  mutate(country = case_when(
+    state %in% states$abbreviation ~ "United States",
+    state %in% c("ON", "BC") ~ "Canada",
+    state %in% c("AG", "CH", "QR", "NL", "SL", "PU", "VE") ~ "Mexico",
+    state %in% c("FM") ~ "Honduras",
+    state %in% c("ANT") ~ "Columbia",
+  ))
+```
+
+Going forward, we will work with the data from the United States only. All Denny's locations are in the United States, so we don't need to worry about them. However we do need to filter the La Quinta dataset for locations in United States, now that we have created our `country` variable.  Run the code below (change `eval = FALSE` to `eval = TRUE`) to filter the La Quinta data for observations where the `country` variable equals United States.  Notice that the result is saved as `lq` again so we can use the filtered data frame moving forward.
+
+```{r eval = TRUE}
+lq <- lq %>%
+  filter(country == "United States")
+```
+
+7. Which states have the most and fewest Denny's locations? What about La Quinta? Is this surprising? Why or why not?
+
+```{r us states dennys}
+dn %>% 
+  group_by(state) %>% 
+  count(state) %>% 
+  arrange(desc(n))
+```
+```{r la}
+lq %>% 
+  group_by(state) %>% 
+  count(state) %>% 
+  arrange(desc(n))
+```
+California had the most Denny's and Delaware had the fewest Denny's. Texas has the most La Quintas and Maine has the fewest La Quintas. 
+
+Next, let's calculate which states have the most Denny's locations *per thousand square miles*. This requires *join*ing information from the frequency tables you created in Exercise 8 with information from the `states` data frame.
+
+First, we count how many observations are in each state, which will give us a data frame with two variables: `state` and `n`. Then, we join this data frame with the `states` data frame. However note that the variables in the `states` data frame that has the two-letter abbreviations is called `abbreviation`. So when we are joining the two data frames we specify that the `state` variable from the Denny's data should be matched `by` the `abbreviation` variable from the `states` data:
+
+```{r eval = TRUE}
+dn %>%
+  count(state) %>%
+  inner_join(states, by = c("state" = "abbreviation"))
+```
+
+Before you move on to the next question, run the code above (change `eval = FALSE` to `eval = TRUE`) and take a look at the output. In the next exercise you will need to build on this pipe.  Take a minute to think carefully about why we used an inner join here.  Remember that `inner_join` matches pairs of observations whenever their keys (or matching values) are equal.  It will drop all rows from both tables that don't have a match in the other.
+
+8. Which states have the most Denny's locations per thousand square miles? What about La Quinta?  To answer this question, start with the code above that we used to join the counted dataframe to the `states` dataframe.  To that pipeline, add a new variable that is the number of locations per thousand square miles.  
+```{r eval = TRUE}
+dn %>%
+  count(state) %>%
+  inner_join(states, by = c("state" = "abbreviation")) %>% 
+  mutate(numLocations = (n*1000) / (area)) %>% 
+  arrange(desc(numLocations))
+```
+Rhode Island has the most Denny's locations per 1000 miles. 
+```{r eval = TRUE}
+lq %>%
+  count(state) %>%
+  inner_join(states, by = c("state" = "abbreviation")) %>% 
+  mutate(numLocations = (n*1000) / (area)) %>% 
+  arrange(desc(numLocations))
+```
+Rhode Island has the most La Quinta's per 1000 miles. 
+
+Next, we put the two datasets together into a single data frame. However before we do so, we need to add an identifier variable. We'll call this `establishment` and set the value to `"Denny's"` and `"La Quinta"` for the `dn` and `lq` data frames, respectively.  Change `eval = FALSE` to `eval = TRUE` in the code chunk below and then run it.
+
+```{r eval = TRUE}
+dn <- dn %>%
+  mutate(establishment = "Denny's") 
+lq <- lq %>%
+  mutate(establishment = "La Quinta")
+```
+
+Since the two data frames have the same columns, we can easily bind them with the `bind_rows` function.  The `bind_rows` function is in the `dplyr` package, and it is handy when the dataframes have all the same columns and you want to put the dataframes together (stack them). Run the code below (change `eval = FALSE` to `eval = TRUE`) to bind the `dn` and `lq` data frames.
+
+```{r eval = TRUE}
+dn_lq <- bind_rows(dn, lq)
+```
+
+The following three questions ask you to create visualizations. These should follow best practices you learned in class, such as informative titles, axis labels, etc. See http://ggplot2.tidyverse.org/reference/labs.html for help with the syntax. You can also choose different themes to change the overall look of your plots, see http://ggplot2.tidyverse.org/reference/ggtheme.html for help with these.
+
+9.  Plot the locations of the two establishments using a scatter plot, and color the points by the establishment type. Note that the latitude is plotted on the y-axis and the longitude on the x-axis.
+```{r scatterplot}
+ggplot(data = dn_lq, aes(x = longitude, y = latitude, color = establishment)) +
+  geom_point() +
+  labs(title = "Locations of La Quinta's and Denny's in the US",
+       x = "Longitude", 
+       y = "Latitude")
+```
+
+10. Filter the data for observations in North Carolina only, and recreate the plot. You should also adjust the transparency of the points, by setting the `alpha` level, so that it's easier to see the overplotted ones. Visually, does Mitch Hedberg's joke appear to hold here?
+```{r nc}
+dn_lq %>% 
+  filter(state == "NC") %>% 
+  ggplot(aes(x = longitude, y = latitude, color = establishment)) +
+  geom_point(alpha = 0.5) +
+  labs(title = "Locations of La Quinta's and Denny's in NC",
+       x = "Longitude", 
+       y = "Latitude") 
+```
+
+11. Now filter the data for observations in Texas only, and recreate the plot, with an appropriate `alpha` level. Visually, does Mitch Hedberg's joke appear to hold here?
+```{r tx}
+dn_lq %>% 
+  filter(state == "TX") %>% 
+  ggplot(aes(x = longitude, y = latitude, color = establishment)) +
+  geom_point(alpha = 0.5) +
+  labs(title = "Locations of La Quinta's and Denny's in TX",
+       x = "Longitude", 
+       y = "Latitude") 
+```
+That's it for now! In the next lab we will take a more quantitative approach to answering these questions.
+Be sure to commit and push all changed files.  All group members should pull one last time once all changes have been committed and pushed.
+
+

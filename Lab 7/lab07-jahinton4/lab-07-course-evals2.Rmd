@@ -1,0 +1,137 @@
+---
+title: "Lab 07 - Professor attractiveness and course evaluations, Part 2"
+subtitle: "Modeling with multiple predictors"
+output: html_document
+---
+
+In this lab we revisit the professor evaluations data we modeled in the previous lab. In the last lab we modeled evaluation scores using a single predictor at a time. However this time we use multiple predictors to model evaluation scores.
+
+If you don't remember the data, review the previous lab's introduction before continuing to the exercises.
+
+## Getting started
+
+### Packages
+
+In this lab we will work with the **tidyverse**, **openintro**, and **broom** packages.
+
+```{r warning = FALSE, message = FALSE}
+library(tidyverse) 
+library(broom)
+library(openintro)
+```
+
+
+## The data
+
+The dataset we'll be using is called `evals` from the **openintro** package. Take a peek at the codebook with `?evals`.
+
+## Exercises
+
+### Part 1: Simple linear regression
+
+1. Fit a linear model (one you have fit before): `m_bty`, predicting average
+   professor evaluation `score` based on average beauty rating (`bty_avg`) only. Write the 
+   linear model, and note the $R^2$ and the adjusted $R^2$.
+   
+```{r m_bty model}
+m_bty <- lm(score ~ bty_avg, data = evals)
+tidy(m_bty)
+```
+
+```{r r-squared for m_bty}
+glance(m_bty)
+```
+
+### Part 2: Multiple linear regression
+
+2. Fit a linear model, `m_bty_gen`, predicting average
+   professor evaluation `score` based on average beauty rating (`bty_avg`) and `gender`. 
+   Write the linear model, and note the $R^2$ and the adjusted $R^2$.
+```{r m_bty_gen model}
+m_bty_gen <- lm(score ~ bty_avg + gender, data = evals)
+glance(m_bty_gen)
+```
+
+3.  What is the equation of the line corresponding to *just* male professors?
+```{r}
+tidy(m_bty_gen)
+```
+$\widehat{score} = 3.747 + 0.0742bty\_avg + 0.1724 gender_{male}$
+
+For males, $\widehat{score} = 3.747 + 0.0742bty\_avg + 0.1724(1)$
+For females, $\widehat{score} = 3.747 + 0.0742bty\_avg$
+
+4.  For two professors who received the same beauty rating, which gender tends 
+    to have the higher course evaluation score?
+
+Males receive higher scores.
+    
+5. How do the adjusted $R^2$ values of the two models `m_bty_gen` and `m_bty` compare? What does this tell us 
+   about how useful `gender` is in explaining the variability in evaluation scores when we 
+   already have information on the beauty score of the professor?
+  
+Gender helped make the model a little bit better as seen in the slightly higher adjusted r-squared. However, the adjusted r-squared value is still not desirable. This reveals that we need more predictors to make a better model. 
+
+6. Compare the slopes of `bty_avg` for the two models (`m_bty` and `m_bty_gen`). Has the 
+   addition of `gender` to the model changed the parameter estimate (slope) for `bty_avg`?
+
+The slope increased when we added gender to the model. 
+
+### Part 3: The search for the best model
+
+Going forward, only consider the following variables as potential predictors: `rank`, 
+`ethnicity`, `gender`, `language`, `age`, `cls_perc_eval`, `cls_did_eval`, `cls_students`, 
+`cls_level`, `cls_profs`, `cls_credits`, `bty_avg`.
+
+7. Which variable, on its own, would you expect to be the worst predictor of 
+    evaluation scores? Why? *Hint:* Think about which variable would you 
+    expect to not have any association with the professor's score.
+
+I think age would be the worst predictor of evaluations scores. 
+
+8. Check your suspicion from the previous exercise. Use the starter code below to first check if there is an association between the professor's score and the variable you selected in Question 7.  Next, fit a linear model using the predictor selected in Question 7 and inspect the model results to see if the predictor you chose in Question 7 is a good predictor of evaluation score.  Explain whether or not your suspicion is correct, citing specific results from your visualization and the model.
+
+```{r eval = FALSE, message = FALSE, warning = FALSE}
+library(GGally)
+evals %>%
+  select(score, age) %>% #Fill in your variable name
+  ggpairs()
+```
+
+```{r m_age model}
+m_age <- lm(score ~ age, data = evals)
+tidy(m_age)
+glance(m_age)
+```
+
+9. Suppose you wanted to fit a full model with the variables listed above at the start of Part 3. If you know you are going to include `cls_perc_eval` and `cls_students` in the model, which variable should you *not* include as an additional predictor? Why?  Include a scatterplot matrix to test for collinearity as part of your response.
+
+```{r}
+library(GGally)
+evals %>% 
+  select(score, cls_did_eval, cls_perc_eval, cls_students) %>% 
+  ggpairs()
+```
+
+
+10. Fit a full model called `m_full` with all predictors listed above at the start of Part 3, except for the one you decided to exclude in Question 9.  How does the adjusted $R^2$ value for this model compare to the adjusted $R^2$ value for the model you fit in Question 2 (the model with 2 predictors)?
+
+```{r m_full}
+
+```
+
+
+11. We will next use backward selection to determine the *best* model, starting with the full model that you fit in Question 10.  Use the code below to perform the backward selection.  **Note:** the `step` function uses AIC as the criterion for model selection instead of adjusted $R^2$. A model with a lower AIC score indicates a better fit.  Adding more parameters penalizes the score, so if two models equally explain the variance in the given data, the model with fewer parameters will have a lower AIC score and will be selected as the better model fit.  After running the code below, write out the "best" linear model for predicting score.  (Also, check and see if the predictor you selected in Question 7 makes it into the final model!)
+
+```{r eval = FALSE}
+selected_model <- step(m_full, direction = "backward")
+tidy(selected_model) %>% select(term, estimate, p.value)
+
+glance(selected_model)
+```
+
+
+12. Based on your final model, describe the characteristics of a professor and course at University of Texas at Austin that would be associated with a high evaluation score.  Hint:  Interpret the coefficient estimates for the final model from Question 11.
+
+
+    

@@ -1,0 +1,429 @@
+---
+title: "Lab 03 - What should I major in?"
+subtitle: "Data wrangling and visualization"
+author:  "Jeannie Hinton"
+date:  "2/9/2023"
+output: html_document
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(eval = TRUE)
+```
+
+
+The first step in the process of turning information into knowledge is to 
+summarize and describe the raw information - the data. In this assignment we 
+explore data on college majors and earnings, specifically the data behind the 
+FiveThirtyEight story ["The Economic Guide To Picking A College Major"](https://fivethirtyeight.com/features/the-economic-guide-to-picking-a-college-major/).
+
+These data originally come from the American Community Survey (ACS) 2010-2012 
+Public Use Microdata Series. While outside the scope of this assignment, if you 
+are curious about how raw data from the ACS were cleaned and prepared, see 
+[the code](https://github.com/fivethirtyeight/data/blob/master/college-majors/college-majors-rscript.R) FiveThirtyEight authors used.
+
+We should also note that there are many considerations that go into picking a major.
+Earnings potential and employment prospects are two of them, and they are important,
+but they don't tell the whole story. Keep this in mind as you analyze the data.
+
+The learning goals of this lab are:
+
+- Manipulate and transform data to prepare it for visualization.
+- Summarize data.
+
+## Getting started
+
+Click on the link emailed to you to create your Lab 03 repo, which should be named `lab-03-college-majors-YOUR_NAME`. Copy the URL of the repo, and clone it in RStudio. Refer to Lab 01 if you would like to see step-by-step instructions for cloning a repo into an RStudio project.
+
+First, open the R Markdown document `lab-03-college-majors.Rmd` and Knit it. Make sure it compiles without errors. 
+
+# Packages
+
+In this lab we will work with the `tidyverse` package as usual.  In addition, we will use the `fivethirtyeight` package for data. You will first need to install the `fivethirtyeight` package by running the command below in your console:
+
+```{r eval = FALSE}
+install.packages("fivethirtyeight")
+```
+
+Run the following code to load your packages:
+
+```{r}
+library(tidyverse)
+library(fivethirtyeight)
+```
+
+
+
+# The Data
+
+The data frame we will be working with today is called `college_recent_grads` and it's in the `fivethirtyeight` package.
+
+To find out more about the dataset, type the following in your Console: `?college_recent_grads`. A question mark before the name of an object will always bring up its help file. This command must be run in the Console.
+
+`college_recent_grads` is a tidy **data frame**, with each row 
+representing an **observation** and each column representing a **variable**.
+
+Take a quick peek at your data frame and view its dimensions 
+with the `glimpse` function.
+
+```{r glimpse}
+glimpse(college_recent_grads)
+```
+
+The description of the variables, i.e. the **codebook**, is given below.
+
+| Header                        |  Description
+|:----------------|:--------------------------------
+|`rank`                         | Rank by median earnings
+|`major_code`                   | Major code, FO1DP in ACS PUMS
+|`major`                        | Major description
+|`major_category`               | Category of major from Carnevale et al
+|`total`                        | Total number of people with major
+|`sample_size`                  | Sample size (unweighted) of full-time, year-round ONLY (used for earnings)
+|`men`                          | Male graduates
+|`women`                        | Female graduates
+|`sharewomen`                   | Women as share of total
+|`employed`                     | Number employed (ESR == 1 or 2)
+|`employed_full_time`           | Employed 35 hours or more
+|`employed_part_time`           | Employed less than 35 hours
+|`employed_full_time_yearround` | Employed at least 50 weeks (WKW == 1) and at least 35 hours (WKHP >= 35)
+|`unemployed`                   | Number unemployed (ESR == 3)
+|`unemployment_rate`            | Unemployed / (Unemployed + Employed)
+|`median`                       | Median earnings of full-time, year-round workers
+|`p25th`                        | 25th percentile of earnigns
+|`p75th`                        | 75th percentile of earnings
+|`college_jobs`                 | Number with job requiring a college degree
+|`non_college_jobs`             | Number with job not requiring a college degree
+|`low_wage_jobs`                | Number in low-wage service jobs
+
+The `college_recent_grads` data frame is a trove of information. Let's think about 
+some questions we might want to answer with these data:
+
+- Which major has the lowest unemployment rate?
+- Which major has the highest percentage of women?
+- How do the distributions of median income compare across major categories?
+- Do women tend to choose majors with lower or higher earnings?
+
+In the next section we aim to answer these questions.
+
+# Data wrangling and visualization
+
+## Which major has the lowest unemployment rate?
+
+In order to answer this question all we need to do is sort the data. We use the
+`arrange` function to do this, and sort it by the `unemployment_rate` variable. 
+By default `arrange` sorts in ascending order, which is what we want here -- 
+we're interested in the major with the *lowest* unemployment rate.
+
+```{r lowest-unemp}
+college_recent_grads %>%
+  arrange(unemployment_rate)
+```
+
+This gives us what we wanted, but not in an ideal form.  Some of the variables are not 
+that useful (e.g. `major_code`, `major_category`) and some we might want 
+front and center are not easily viewed (e.g. `unemployment_rate`).
+
+We can use the `select` function to choose which variables to display, and 
+in which order:
+
+
+```{r lowest-unemp-select}
+college_recent_grads %>%
+  arrange(unemployment_rate) %>%
+  select(unemployment_rate, major, rank)
+```
+
+Ok, this is looking better, but do we really need all those decimal places in the 
+unemployment variable? Not really!
+
+One way to address this problem would be to round the 
+`unemployment_rate` variable in the dataset.
+
+To round `unemployment_rate`: We create a new variable with the `mutate` function. 
+In this case, we're overwriting the existing `unemployment_rate` variable, by 
+`round`ing it to `4` decimal places.
+
+```{r}
+college_recent_grads %>%
+  arrange(unemployment_rate) %>%
+  select(major, unemployment_rate, rank) %>%
+  mutate(unemployment_rate = round(unemployment_rate, digits = 4))
+```
+
+
+Note that the `digits` in `round` are 
+decimal places. 
+
+If we want to keep the formatting change to `unemployment_rate`, we need to save it:
+```{r}
+grads <- college_recent_grads %>%
+  mutate(unemployment_rate = round(unemployment_rate, digits = 4))
+```
+
+## Which major has the highest percentage of women?
+
+To answer such a question we need to arrange the data in descending order. For 
+example, if earlier we were interested in the major with the highest unemployment 
+rate, we would use the following:
+
+
+```{r}
+grads %>%
+  arrange(desc(unemployment_rate)) %>%
+  select(major, unemployment_rate, rank)
+```
+
+1. Using what you've learned so far, arrange the data in descending order with respect to proportion of women in a major, and display only the major,
+the total number of people with major, and proportion of women. Show only the 
+top 3 majors by adding the `slice` function at the end of the pipeline.
+
+```{r}
+grads %>% 
+  arrange(desc(women)) %>% 
+  select(major, total, sharewomen) %>% 
+  slice(1 : 3)
+```
+
+
+`r emo::ji("white_check_mark")` `r emo::ji("arrow_up")` *Commit and push your changes to GitHub with an appropriate commit message. Make sure to commit and push all changed files so that your Git pane is cleared up afterwards.*
+
+## How do the distributions of median income compare across major categories?
+
+There are three types of incomes reported in this data frame: `p25th`, `median`, 
+and `p75th`. These correspond to the 25th, 50th, and 75th percentiles of the 
+income distribution of sampled individuals for a given major.
+
+2. Why do we often choose the median, rather than the mean, to 
+describe the typical income of a group of people?
+  **In regards to a variable such as income where there can be such a large range of values as well as some very low or high extremes, it is best to use the median rather than the mean because the median is not affected by extreme outliers. The mean, however, is affected by outliers and makes it less desriable for assessing the typical income of a group of people.**
+
+The question we want to answer is "How do the distributions of median income compare across major categories?". We need to do a few things to answer this question: First, we need to group the data by `major_category`. Then, we need a way to summarize the 
+distributions of median income within these groups. This decision will depend on the 
+shapes of these distributions. So first, we need to visualize the data.
+
+We use the `ggplot` function to do this. The first argument is the data frame, and 
+the next argument gives the mapping of the variables of the data to the `aes`thetic 
+elements of the plot.
+
+Let's start simple and take a look at the distribution of all median incomes, 
+without considering the major categories.
+
+```{r hist-all}
+ggplot(data = grads, mapping = aes(x = median)) +
+  geom_histogram()
+```
+
+Along with the plot, we get a message:
+
+```
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+```
+
+This is telling us that we might want to reconsider the bin width we chose for our 
+histogram -- or more accurately, the bin width we didn't specify. It's good practice 
+to always think in the context of the data and try out a few bin widths before 
+settling on one. You might ask yourself: "What would be a meaningful 
+difference in median incomes?" $1 is obviously too little, $10000 might be too high.
+
+3. Modify the histogram plotting code above (the distribution of all median incomes) and try bin widths of $1000 and $5000.  Choose the binwidth that you think is most appropriate. Explain your reasoning for your choice. Note that the binwidth is an argument for the `geom_histogram` function. So to specify a binwidth of $1000, you would use 
+`geom_histogram(binwidth = 1000)`.
+
+```{r hist-all-2}
+ggplot(data = grads, mapping = aes(x = median)) +
+  geom_histogram(binwidth = 5000)
+```
+**I find the $5000 bindwidth to be better than the $1000 bindiwdth because it is easier to see the shape of the visualization with the $5000 bindwidth.**
+
+`r emo::ji("white_check_mark")` `r emo::ji("arrow_up")` *Commit and push your changes to GitHub with an appropriate commit message again. Make sure to commit and push all changed files so that your Git pane is cleared up afterwards.*
+
+We can also calculate summary statistics for this distribution using the 
+`summarize` function:
+
+```{r}
+grads %>%
+  summarize(min = min(median), max = max(median),
+            mean = mean(median), med = median(median),
+            sd = sd(median), 
+            q1 = quantile(median, probs = 0.25),
+            q3 = quantile(median, probs = 0.75))
+```
+
+4. Based on the shape of the histogram you created in the 
+previous exercise, determine which of these summary statistics is useful 
+for describing the center of the distribution. Write up your description of the distribution (remember 
+shape, center, spread, any unusual observations) and include the summary 
+statistic that you chose as well.
+
+**The histogram for median income is right skewed with the middle 50% of median incomes ranging from $33,000 and $45000 and the true median income at $36000. A good measure of spread for this income data is the range. It appears that the median income can be anywhere from $20000 to $105000 in this dataset. **
+
+**The median of the median is a useful measure of center for this dataset because of the large range of values for income and the variation in frequency of the levels of income. To explain, the frequency for incomes above $90000 is so low compared to the frequency of those with an income of around $30000 so the median helps negate the issues that could have been caused by such variation in frequency of income levels.**
+
+Next, we facet the plot by major category.
+
+5. Plot the distribution of `median` income using a histogram, 
+faceted by `major_category`. Use the `binwidth` you chose in the earlier 
+exercise.  If the major category labels in your faceted plot aren't displaying nicely, try adding the option `labeller = label_wrap_gen(width = 15)` to your `facet_grid()` or `facet_wrap()` function call.
+
+```{r hist_med_income_by_majors}
+ggplot(data = grads, mapping = aes(x = median)) +
+  geom_histogram(binwidth = 5000) +
+  facet_wrap(~ major_category)
+```
+
+
+Next, use side-by-side boxplots to visualize the distribution of `median` income by `major_category`.  Hint:  since the `major_category` values are somewhat lengthy, you might consider plotting that variable on the y-axis.  Which visualization do you think is more effective:  the side-by-side histograms, or the side-by-side boxplots?
+
+```{r boxplot-income-v-majors}
+ggplot(data = grads, mapping = aes(x = median, y = major_category)) + 
+  geom_boxplot()
+  
+```
+**I believe that the side-by-side boxplots are much easier to understand compared to the side-by-side histograms because I can more easily compare the range of salaries as well as where the middle 50% of each major's income is. It is much more difficult to see where the middle 50% of observations for each major fall in the histograms. With the boxplots, I can also see exactly where the median income is for each major, which is a very informative summary statistic that I cannot find with the histograms. **
+
+Now that we've seen the shapes of the distributions of 
+median incomes for each major category, we should have a better idea for 
+which summary statistic to use to quantify the typical median income.
+
+6. Which major category has the highest typical (you'll need 
+to decide what this means) median income? Use the partial code below, 
+filling it in with the appropriate statistic and function. Also note that we 
+are looking for the highest statistic, so make sure to arrange in the correct 
+direction. 
+
+```{r eval=TRUE}
+grads %>%
+  group_by(major_category) %>%
+  summarize(typical_median = median(median)) %>%
+  arrange(desc(typical_median))
+```
+**Engineering has the highest typical median income.**
+
+`r emo::ji("white_check_mark")` `r emo::ji("arrow_up")` *Commit and push your changes to GitHub with an appropriate commit message again. Make sure to commit and push all changed files so that your Git pane is cleared up afterwards.*
+
+7. Which major category is the least popular in this sample? 
+To answer this question we use a function called `count`, which first 
+groups the data and then counts the number of observations in each category (see below). Add to the pipeline appropriately to arrange the results so 
+that the major category with the lowest observations is on top.
+
+```{r count-for-majors}
+grads %>%
+  count(major_category) %>% 
+  arrange(n)
+```
+**The major called Interdisciplinary is the least popular major.**
+## All STEM fields aren't the same
+
+One of the sections of the [FiveThirtyEight story](https://fivethirtyeight.com/features/the-economic-guide-to-picking-a-college-major/) is "All STEM fields aren't the same". Let's see if this 
+is true.
+
+First, let's create a new vector called `stem_categories` that lists the 
+major categories that are considered STEM fields.
+
+```{r}
+stem_categories <- c("Biology & Life Science",
+                     "Computers & Mathematics",
+                     "Engineering",
+                     "Physical Sciences")
+```
+
+Then, we can use this to create a new variable in our data frame indicating 
+whether a major is STEM or not.
+
+```{r}
+grads <- grads %>%
+  mutate(major_type = 
+           ifelse(major_category %in% stem_categories, "stem", "not stem"))
+glimpse(grads)
+```
+
+Let's unpack this: with `mutate` we create a new variable called 
+`major_type`, which is defined as `"stem"` if the `major_category` is in 
+the vector called `stem_categories` we created earlier, and as `"not stem"` 
+otherwise.
+
+`%in%` is a **logical operator**. Other logical operators that are commonly 
+used are
+
+| Operator                   | Operation
+|:----------------|:--------------
+|`x < y`                     | less than
+| `x > y`                    | greater than
+| `x <= y`                   | less than or equal to
+| `x >= y`                   | greater than or equal to
+| `x != y`                   | not equal to
+| `x == y`                   | equal to
+| `x %in% y`                 | contains
+| <code>x &#124; y</code>    | or
+| `x & y`                    | and
+| `!x`                       | not
+
+We can use the logical operators to also `filter` our data for STEM majors 
+whose median earnings is less than or equal to the median for all majors' median earnings, 
+which we found to be $36,000 earlier.
+
+```{r}
+grads %>%
+  filter(
+    major_type == "stem",
+    median <= 36000
+  )
+```
+
+8. Which STEM majors have median salaries equal to or less than the median for all majors' median earnings? Your output should only show 
+the major name and median, 25th percentile, and 75th percentile earning for 
+that major and should be sorted such that the major with the highest 
+median earning is on top.
+
+```{r check-median-income}
+grads %>%
+  summarize(median_income = median(median))
+```
+
+```{r filter-for-stem-and-sum-stats}
+grads %>%
+  filter(
+    major_type == "stem",
+    median <= median(median)) %>% 
+  select(major_category, median, p25th, p75th) %>% 
+  arrange(desc(median))
+  
+```
+
+
+`r emo::ji("white_check_mark")` `r emo::ji("arrow_up")` *Commit and push your changes to GitHub with an appropriate commit message again. Make sure to commit and push all changed files so that your Git pane is cleared up afterwards.*
+
+## What types of majors do women tend to major in?
+
+9. Create a scatterplot of median income vs. proportion of 
+women in that major, colored by whether the major is in a STEM field or not. Describe the association between these three variables.
+
+```{r med-income-v-prop-women}
+ggplot(data = grads, mapping = aes(x = median, y = sharewomen, color = major_type)) +
+  geom_point() + 
+  labs(title = "Median Salries vs. Proportion of Total Women", 
+       x = "Median", 
+       y = "Proportion of Total Women") 
+```
+
+
+10.  Ask a question of interest to you and answer it using summary statistic(s) and/or visualization(s).
+
+**Which majors typically make over $60,000 a year?**
+
+```{r}
+grads %>%
+  filter(
+    median(median) <= 60000) %>% 
+  select(major_category, median) %>% 
+  arrange(desc(median))
+```
+
+
+`r emo::ji("white_check_mark")` `r emo::ji("arrow_up")` *Commit and push your changes to GitHub with an appropriate commit message again. Make sure to commit and push all changed files so that your Git pane is cleared up afterwards.*
+
+## Wrapping up
+
+Go back through your write up to make sure you're following coding style guidelines we discussed in class. Make any edits as needed.
+
+Also, make sure all of your R chunks are properly labeled, and your figures are reasonably sized.
+
